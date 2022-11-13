@@ -2,6 +2,7 @@ import random
 
 arrray = [1,4,3,5,2,1]
 
+# start and end are always 1
 def intialize_population(cities, specimen):
   specimen_list = []
 
@@ -12,6 +13,17 @@ def intialize_population(cities, specimen):
     specimen_list.append(random_parent)
   return specimen_list
 
+
+# start and end are same number but random every time
+def random_start_population(cities, specimen):
+  specimen_list = []
+
+  for i in range(specimen):
+    random_parent = list(range(1,cities + 1))
+    random.shuffle(random_parent)
+    random_parent = random_parent + [random_parent[0]]
+    specimen_list.append(random_parent)
+  return specimen_list
 
 
 def determine_fitness(path, evaluation_matrix):
