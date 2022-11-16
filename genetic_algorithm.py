@@ -1,4 +1,6 @@
 import random
+import math
+import tsplib_translator
 
 arrray = [1,4,3,5,2,1]
 
@@ -37,7 +39,26 @@ def determine_fitness(path, evaluation_matrix):
     step = evaluation_matrix[value - 1][path[i+1] - 1]
     total += step
 
-  #   print(f"from {value} to {path[i+1]} step-length: {step} subtotal: {total}")
+    # print(f"from {value} to {path[i+1]} step-length: {step} subtotal: {total}")
+  
+  # print(f"total: {total}")
+  return total
+
+def determine_fitness_xy(path, x, y):
+
+  total = 0
+
+  for i, value in enumerate(path):
+    if(i == len(path) - 1):
+      break
+    
+    x_distance = x[value - 1] - x[path[i+1] - 1]
+    y_distance = y[value - 1] - y[path[i+1] - 1]
+    # pythagoras theorem
+    step = round(math.sqrt(x_distance * x_distance + y_distance * y_distance))
+    total += step
+
+    # print(f"from {value} to {path[i+1]} step-length: {step} subtotal: {total}")
   
   # print(f"total: {total}")
   return total
@@ -56,15 +77,13 @@ matrix_one = [
 
 x = [1,3,4,5,2,6,7,8,1]
 
-# print(determine_fitness(x, matrix_one))
-
-def parent_selection(parents, evaluation_matrix, survivor_count):
+def parent_selection(parents, x, y, survivor_count):
 
   parent_fitness = {}
 
   # determine fitness for each parent
   for i in parents:
-    fitness = determine_fitness(i, evaluation_matrix)
+    fitness = determine_fitness_xy(i, x, y)
     parent_fitness[str(i)] = fitness
 
   total_fitness = sum(parent_fitness.values())
@@ -73,14 +92,81 @@ def parent_selection(parents, evaluation_matrix, survivor_count):
   for i in parent_fitness:
     parent_fitness[i] /= total_fitness
 
-  print(random.choices(parents, parent_fitness.values(), k = survivor_count))
+  # print(random.choices(parents, parent_fitness.values(), k = survivor_count))
   return parent_fitness
 
+# x = [1,3 | 4,5,2 | 6,7,8,1]
+# y = [1,4,| 2,3,6 | 5,7,8,1]
 
-y = [x,[1,3,5,4,2,6,7,8,1]]
 
-# parent_selection(y, matrix_one, 10)
+cross_p = (2,5)
+mutation = 0.14
 
 def create_offspring(parent_one, parent_two, crossing_points, mutation_chance):
   
-  return 0
+  parent_one_substring = parent_one[crossing_points[0] : crossing_points[1]]
+  
+
+  parent_two_tail = parent_two[crossing_points[1]:]
+  parent_two_head = parent_two[1:crossing_points[1]]
+
+  parent_two_substring = parent_two_tail + parent_two_head
+
+  parent_two_substring = list(filter(lambda e: e not in parent_one_substring, parent_two_substring))
+
+  offspring_tail_length = len(parent_two) - crossing_points[1] - 1
+  offspring_tail = parent_two_substring[:offspring_tail_length]
+  offspring_head = parent_two_substring[offspring_tail_length :]
+
+  offspring = offspring_head + parent_one_substring + offspring_tail 
+
+  # mutation
+
+  for i, value in enumerate(offspring):
+
+    if(i == len(offspring)-1):
+      break
+
+
+    random_number = random.randint(0,100)
+
+    if(random_number <= mutation_chance * 100):
+      print("mutate")
+      second_spot = random.randint(1, len(offspring) - 1)
+      temp = offspring[second_spot]
+      offspring[second_spot] = value
+      offspring[i] = temp
+
+  return offspring + [offspring_head[0]]
+
+# print(create_offspring([1,2,5,6,4,3,8,7,1],[1,4,2,3,6,5,7,8,1],cross_p,mutation))
+# x,y = tsplib_translator.xy_coords("./tsplib/eil76.tsp")
+
+# determine_fitness_xy(intialize_population(76,1)[0],x,y)
+
+def genetic_algorithm():
+  # number of nodes
+  cities = 76
+  # number of solutions
+  specimen = 10
+  # tsplib problem
+  x,y = tsplib_translator.xy_coords("./tsplib/eil76.tsp")
+  # crossing points
+  crossing_points = (0,0)
+  # mutation chance
+  mutation = 0.01
+  # repetitions
+  repetitions = 1
+  # µ parents
+  parent_mu = 0
+  # lambda children
+  children_lambda = 0
+
+  starting_pop = random_start_population(cities, specimen)
+  print(starting_pop)
+  print(">>><<<<<")
+  # parent selection
+  reduced_pop = parent_selection(starting_pop, x, y, 4)
+  print(reduced_pop)
+
+genetic_algorithm()
