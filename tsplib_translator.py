@@ -29,5 +29,5 @@ def xy_coords(file_path):
 
 
   f.close()
-  print("done")
+  print("done parsing data")
   return x,y
