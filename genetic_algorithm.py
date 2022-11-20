@@ -101,10 +101,34 @@ def parent_selection(parents, x, y, survivor_count):
   selected_pop = random.choices(parent_set, parent_fitness.values(), k = round(len(parent_set) * survivor_count))
   return selected_pop
 
-# x,y = tsplib_translator.xy_coords("./tsplib/eil76.tsp")
-# survivors = parent_selection(random_start_population(76,10),x, y, 0.74)
-# print(survivors)
-# print(len(survivors))
+
+def tournament_selection(parents, x, y, survivor_percentage, tournament_size):
+  population = parents
+  winners = []
+  # as long as we dont have enough survivors
+  while(len(winners) < survivor_percentage * 100 * len(parents)):
+    # print(f"winners length = {len(winners)} pop length = {len(population)}")
+    # add random participants to tournament
+    current_round = []
+    for i in range(tournament_size):
+      current_round.append(population[random.randrange(0,len(population))])
+
+    # determine winner
+    best_fitness = 0
+    best_candidate = []
+    for candidate in current_round:
+      fitness = determine_fitness_xy(candidate, x, y)
+      if(best_fitness == 0 or fitness < best_fitness):
+        best_candidate = candidate
+        best_fitness = fitness
+
+    # add tournament winner to winners list
+    winners.append(best_candidate)
+
+    # delete winner from parents/population
+    population.remove(best_candidate)
+
+  return winners
 
 
 def create_offspring(parent_one, parent_two, crossing_points, mutation_chance):
@@ -152,33 +176,37 @@ def create_offspring(parent_one, parent_two, crossing_points, mutation_chance):
 # determine_fitness_xy(intialize_population(76,1)[0],x,y)
 
 def genetic_algorithm():
-  tsp_problem = "./tsplib/eil76.tsp"
+  tsp_problem = "./tsplib/bier127.tsp"
   # tsplib problem
   x,y = tsplib_translator.xy_coords(tsp_problem)
   # number of nodes
-  cities = 76
+  cities = 127
   # number of solutions
-  specimen = 100000
+  specimen = 1000
   # survivors per selection as percentage of input
-  survivors_percentage = 0.7
+  survivors_percentage = 0.2
   # crossing points
-  crossing_points = (23,53)
+  crossing_points = (45,55)
   # mutation chance
   mutation = 0
   # repetitions
-  repetitions = 15
-  # µ parents
-  parent_mu = 0
-  # lambda children
-  children_lambda = 0.8
+  repetitions = 4
+  # plus selection flag, 0 = comma selection
+  plus_seleciton_flag = 1
+  # tournament size
+  tournament_size = 2
 
   population = random_start_population(cities, specimen)
 
   for i in range(repetitions):
     if(len(population) <= 4):
       break
+
+    print(f" repetition = {i+1} population size = {len(population)}")
+
     # parent selection
-    population = parent_selection(population, x, y, survivors_percentage)
+    # population = parent_selection(population, x, y, survivors_percentage)
+    population = tournament_selection(population, x, y, survivors_percentage, tournament_size)
 
     # delete last element if uneven size so we can have even amount of parents
     # kinda unnecessary as the zip - iterator also takes care of this
@@ -190,17 +218,9 @@ def genetic_algorithm():
     for parent1, parent2 in zip(population[::2], population[1::2]):
       children.append(create_offspring(parent1, parent2, crossing_points, mutation))
 
-    # combine children + parents according to percentage
-    
-    # print(f"population: {population} ")
-    # print(f"children: {children}")
-    # population = children + population
-    # print(f"new pop: {population}")
 
-    parent_percentage = round(len(population) * parent_mu)
-    children_percentage = round(len(children) * children_lambda)
+    population = children + population * plus_seleciton_flag
 
-    population = population[:parent_percentage] + children[:children_percentage]
 
   parent_fitness = {}
 
@@ -213,23 +233,25 @@ def genetic_algorithm():
   sorted_tuples = sorted(parent_fitness.items(), key=lambda item: item[1])
   sorted_dict = {k: v for k, v in sorted_tuples}
 
-  print(sorted_dict)
+  print(list(sorted_dict.values())[0])
 
 
-  timestr = time.strftime("%Y%m%d-%H%M%S")
+  timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
 
-  f = open(f"./results/{timestr}.txt", "w")
+  f = open(f"./results/tsp_run_{timestr}.txt", "w")
   f.write(f"TSP PROBLEM = {tsp_problem} \n\n")
   f.write(f"Starting population size = {specimen} \n")
   f.write(f"Survivors per selection in % = {survivors_percentage * 100} % \n")
   f.write(f"Crossing points = {crossing_points} \n")
   f.write(f"Mutation chance = {mutation * 100} % \n")
   f.write(f"Generations = {repetitions} \n")
-  f.write(f"Percentage of parents selected = {parent_mu * 100} % \n")
-  f.write(f"Percentage of children selected = {children_lambda * 100} % \n")
-  f.write("\nRESULTS: \n\n")
+  f.write(f"Plus selection flag = {plus_seleciton_flag} \n")
+  f.write(f"tournament size per round = {tournament_size}")
+  f.write("\nRESULT: \n\n")
+  f.write(f"Fitness = {list(sorted_dict.values())[0]} \nPath = {list(sorted_dict.keys())[0]} \n\n")
 
-  for i in sorted_dict:
-    f.write(f"Fitness = {sorted_dict[i]} \nPath = {i} \n\n")
+# genetic_algorithm()
 
-genetic_algorithm()
+loops = 1
+for i in range(0,loops):
+  genetic_algorithm()
