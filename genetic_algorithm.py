@@ -102,11 +102,11 @@ def parent_selection(parents, x, y, survivor_count):
   return selected_pop
 
 
-def tournament_selection(parents, x, y, survivor_percentage, tournament_size):
+def tournament_selection(parents, x, y, survivor_count, tournament_size):
   population = parents
   winners = []
   # as long as we dont have enough survivors
-  while(len(winners) < survivor_percentage * 100 * len(parents)):
+  while(len(winners) < survivor_count):
     # print(f"winners length = {len(winners)} pop length = {len(population)}")
     # add random participants to tournament
     current_round = []
@@ -160,7 +160,7 @@ def create_offspring(parent_one, parent_two, crossing_points, mutation_chance):
     random_number = random.randint(0,100)
 
     if(random_number < mutation_chance * 100):
-      print("mutate")
+      # print("mutate")
       second_spot = random.randint(1, len(offspring) - 1)
       temp = offspring[second_spot]
       offspring[second_spot] = value
@@ -176,25 +176,28 @@ def create_offspring(parent_one, parent_two, crossing_points, mutation_chance):
 # determine_fitness_xy(intialize_population(76,1)[0],x,y)
 
 def genetic_algorithm():
-  tsp_problem = "./tsplib/bier127.tsp"
+  tsp_problem = "./tsplib/eil76.tsp"
   # tsplib problem
   x,y = tsplib_translator.xy_coords(tsp_problem)
   # number of nodes
-  cities = 127
+  cities = 76
   # number of solutions
-  specimen = 1000
+  specimen = 100
   # survivors per selection as percentage of input
-  survivors_percentage = 0.2
+  survivors_percentage = float(2/3)
   # crossing points
-  crossing_points = (45,55)
+  crossing_points = (30,71)
   # mutation chance
-  mutation = 0
-  # repetitions
-  repetitions = 4
+  mutation = 0.01
+  # repetitions / generations
+  repetitions = 10
   # plus selection flag, 0 = comma selection
   plus_seleciton_flag = 1
   # tournament size
-  tournament_size = 2
+  tournament_size = 10
+
+  if(plus_seleciton_flag == 0):
+    survivors_percentage = 1
 
   population = random_start_population(cities, specimen)
 
@@ -202,11 +205,15 @@ def genetic_algorithm():
     if(len(population) <= 4):
       break
 
-    print(f" repetition = {i+1} population size = {len(population)}")
+    print(f"Generation = {i+1} population size = {len(population)}")
 
     # parent selection
     # population = parent_selection(population, x, y, survivors_percentage)
-    population = tournament_selection(population, x, y, survivors_percentage, tournament_size)
+    # survivors_percentage = len(population) - specimen / len(population)
+    
+    survivor_count = survivors_percentage * len(population)
+    population = tournament_selection(population, x, y, survivor_count, tournament_size)
+    # population = tournament_selection(population, x, y, survivors_percentage, tournament_size)
 
     # delete last element if uneven size so we can have even amount of parents
     # kinda unnecessary as the zip - iterator also takes care of this
@@ -217,6 +224,8 @@ def genetic_algorithm():
     children = []
     for parent1, parent2 in zip(population[::2], population[1::2]):
       children.append(create_offspring(parent1, parent2, crossing_points, mutation))
+      if(plus_seleciton_flag == 0):
+        children.append(create_offspring(parent2, parent1, crossing_points, mutation))
 
 
     population = children + population * plus_seleciton_flag
@@ -238,7 +247,7 @@ def genetic_algorithm():
 
   timestr = time.strftime("%Y-%m-%d_%H-%M-%S")
 
-  f = open(f"./results/tsp_run_{timestr}.txt", "w")
+  f = open(f"./results/[{list(sorted_dict.values())[0]}]-tsp_run_{timestr}.txt", "w")
   f.write(f"TSP PROBLEM = {tsp_problem} \n\n")
   f.write(f"Starting population size = {specimen} \n")
   f.write(f"Survivors per selection in % = {survivors_percentage * 100} % \n")
@@ -249,9 +258,52 @@ def genetic_algorithm():
   f.write(f"tournament size per round = {tournament_size}")
   f.write("\nRESULT: \n\n")
   f.write(f"Fitness = {list(sorted_dict.values())[0]} \nPath = {list(sorted_dict.keys())[0]} \n\n")
+  f.close()
+
+  return list(sorted_dict.values())[0]
 
 # genetic_algorithm()
 
-loops = 1
-for i in range(0,loops):
-  genetic_algorithm()
+def run_test(runs):
+  average = 0
+  best = 0
+  for i in range(0,runs):
+    print(f"test run # {i+1}/{runs}")
+    best_child = genetic_algorithm()
+    average += best_child
+    if(best == 0 or best_child < best):
+      best = best_child
+  
+  average /= runs
+  print(f"Average = {average}")
+  print(f"best = {best}")
+  return average
+
+
+
+
+## monte carlo
+def random_run(cities, specimen, repetitions):
+
+  tsp_problem = "./tsplib/eil76.tsp"
+  x,y = tsplib_translator.xy_coords(tsp_problem)
+  best_value = 0
+  best_path = []
+  
+  for i in range(repetitions):
+    print(f"#{i+1}/{repetitions} >>> {round((i+1)/repetitions * 100, 2)}%")
+    random_path = random_start_population(cities, specimen)[0]
+    value = determine_fitness_xy(random_path, x, y)
+    # print(f"value = {value}\npath = {random_path}")
+    
+
+    if(best_value == 0 or value < best_value):
+      best_value = value
+      best_path = random_path
+
+  print(f"\n\namount of random paths created = {repetitions}\nbest value = {best_value}\nbest path = {best_path}")
+
+
+run_test(10)
+runs = 10000
+# random_run(76, 1, runs)
